@@ -12,10 +12,12 @@ GO_DOWNLOAD_RETRIES ?= 3
 # Binaries
 ANALYZE := analyze
 STATUS := status
+DEV_CACHE := dev-cache
 
 # Source directories
 ANALYZE_SRC := ./cmd/analyze
 STATUS_SRC := ./cmd/status
+DEV_CACHE_SRC := ./cmd/dev-cache
 
 # Build flags
 LDFLAGS := -s -w
@@ -42,6 +44,7 @@ build: mod-download
 	@echo "Building for local architecture..."
 	$(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(ANALYZE)-go $(ANALYZE_SRC)
 	$(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(STATUS)-go $(STATUS_SRC)
+	$(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(DEV_CACHE)-go $(DEV_CACHE_SRC)
 
 check:
 	./scripts/check.sh --no-format

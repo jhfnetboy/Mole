@@ -679,6 +679,8 @@ is_path_whitelisted() {
     local target_path="$1"
     [[ -z "$target_path" ]] && return 1
 
+    mole_dev_cache_protects "$target_path" && return 0
+
     # Normalize path (remove trailing slash, collapse consecutive slashes).
     # Callers sometimes concat a glob expansion that already ends in `/`
     # with a sub-path that begins with `/`, producing `.../Default//Service

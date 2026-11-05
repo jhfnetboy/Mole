@@ -293,6 +293,15 @@ restore_homebrew_active_links() {
 
 clean_homebrew() {
     command -v brew > /dev/null 2>&1 || return 0
+    # Homebrew cleanup/autoremove mutate Cellar and installed dependencies as
+    # well as the download cache. The cache path alone cannot prove that no
+    # registered reusable resource would be changed by the owner command.
+    if mole_dev_cache_configured; then
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Homebrew · kept (dev-cache protection; broad owner cleanup)"
+        note_activity
+        log_operation "${MOLE_CURRENT_COMMAND:-clean}" "SKIPPED" "Homebrew" "dev-cache broad owner cleanup"
+        return 0
+    fi
     local cleanup_timeout="${MOLE_TIMEOUT_PKG_CLEANUP_SEC:-20}"
     local autoremove_preview_timeout="${MOLE_TIMEOUT_PKG_LIST_SEC:-10}"
     local brew_cache_file="${HOME}/.cache/mole/brew_last_cleanup"

@@ -1191,6 +1191,11 @@ validate_path_for_deletion() {
     policy_path=$(_mole_normalize_deletion_policy_path "$path")
     _MOLE_VALIDATION_REASON="protected"
 
+    if mole_dev_cache_protects "$path"; then
+        _MOLE_VALIDATION_REASON="registered dev-cache resource or unavailable protection"
+        return 1
+    fi
+
     # Check symlink target if path is a symbolic link
     if [[ -L "$path" ]]; then
         local link_target
@@ -2322,6 +2327,10 @@ _mole_expected_path_absent() {
 
 _mole_owned_path_still_valid() {
     local path="$1"
+    if mole_dev_cache_protects "$path"; then
+        log_operation "${MOLE_CURRENT_COMMAND:-clean}" "SKIPPED" "$path" "dev-cache protection"
+        return 1
+    fi
     local expected_file_sha256="${2:-}"
     local expected_absent_path="${3:-}"
     local expected_parent="${4:-}"
@@ -3813,7 +3822,7 @@ safe_sudo_find_delete() {
         fi
         # -type f never emits symlinks; a path that is one now was swapped
         # after find saw it, and the single-file path refuses those.
-        if [[ "$type_filter" == "f" && "${MOLE_DRY_RUN:-0}" != "1" && ! -L "$match" ]]; then
+        if [[ "$type_filter" == "f" && "${MOLE_DRY_RUN:-0}" != "1" && ! -L "$match" ]] && ! mole_dev_cache_configured; then
             local identity_timeout=""
             local match_identity=""
             local identity_rc=0

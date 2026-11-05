@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+
+SKILL_SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -P "$SKILL_SCRIPT_DIR/../../.." && pwd)"
+
+if [[ ! -x "$REPO_ROOT/bin/dev-cache" ]]; then
+    printf '%s\n' "dev-cache launcher missing: $REPO_ROOT/bin/dev-cache" >&2
+    exit 2
+fi
+
+exec "$REPO_ROOT/bin/dev-cache" "$@"

@@ -10,6 +10,8 @@ if [[ -n "${MOLE_BASE_LOADED:-}" ]]; then
 fi
 readonly MOLE_BASE_LOADED=1
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dev_cache.sh"
+
 # Cleanup libraries read "$DRY_RUN" in 70+ places without a default, and only the
 # command entry points (bin/clean.sh and friends) assign it. Anything that sources
 # a lib directly then calls into it therefore aborts on "unbound variable" under

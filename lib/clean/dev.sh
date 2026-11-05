@@ -36,6 +36,11 @@ clean_tool_cache() {
         if [[ -t 1 ]]; then
             start_section_spinner "Cleaning $description..."
         fi
+        if [[ -n "$cache_path" ]] && mole_dev_cache_protects "$cache_path"; then
+            [[ ! -t 1 ]] || stop_section_spinner
+            log_operation "${MOLE_CURRENT_COMMAND:-clean}" "SKIPPED" "$cache_path" "dev-cache protection"
+            return 0
+        fi
         "$@" > /dev/null 2>&1 || command_rc=$?
         if [[ -t 1 ]]; then
             stop_section_spinner
@@ -932,6 +937,11 @@ _run_go_cache_clean_bound() {
     local owner_dry_run="${11}"
 
     _MOLE_GO_CACHE_BOUND_REASON=""
+
+    if mole_dev_cache_protects "$cache_root" || mole_dev_cache_protects "$physical_root"; then
+        _MOLE_GO_CACHE_BOUND_REASON="dev-cache protection"
+        return 1
+    fi
 
     # The entry check only proves the root was not a symlink when the caller
     # looked. A directory swapped for a link afterwards survives the identity

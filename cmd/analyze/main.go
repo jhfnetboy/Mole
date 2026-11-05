@@ -19,7 +19,9 @@ import (
 )
 
 var (
-	jsonMode = flag.Bool("json", false, "output analysis as JSON instead of TUI")
+	jsonMode  = flag.Bool("json", false, "output analysis as JSON instead of TUI")
+	trendMode = flag.Bool("trend", false, "analyze disk usage trends and directory growth over time")
+	trendDays = flag.Int("days", 7, "comparison time window in days for --trend (default 7)")
 )
 
 // usageText is the help every other Mole subcommand prints by hand. The Go flag
@@ -30,12 +32,16 @@ const usageText = `Usage: mo analyze [OPTIONS] [PATH]
 Explore disk usage. Without PATH, scans a machine-wide overview.
 
 Options:
+  --trend         Analyze disk usage trends and directory growth over time
+  --days N        Comparison time window in days for --trend (default 7)
   --json          Output the analysis as JSON instead of the interactive TUI
   -h, --help      Show this help message
 
 Examples:
   mo analyze                 Machine-wide overview
   mo analyze ~/Library       Scan one directory
+  mo analyze --trend         Analyze disk usage growth trends over the past 7 days
+  mo analyze --trend --days 14 --json  Machine-readable 14-day trend analysis
   mo analyze --json /Volumes Machine-readable output
 `
 
@@ -75,7 +81,9 @@ func main() {
 	}
 
 	go pruneAnalyzerCache()
-	if *jsonMode {
+	if *trendMode {
+		runTrendMode(abs, isOverview, *trendDays, *jsonMode)
+	} else if *jsonMode {
 		runJSONMode(abs, isOverview)
 	} else {
 		runTUIMode(abs, isOverview)

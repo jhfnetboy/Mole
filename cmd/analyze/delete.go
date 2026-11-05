@@ -17,6 +17,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/tw93/mole/internal/devcache"
 	"golang.org/x/sys/unix"
 )
 
@@ -164,6 +165,9 @@ func moveToTrash(path string) error {
 // moveToTrashViaBinary moves absPath to Trash using trash(8). Returns an error
 // when the binary is missing so callers fall back to Finder.
 func moveToTrashViaBinary(absPath string) error {
+	if err := devcache.CheckPath(absPath); err != nil {
+		return err
+	}
 	if _, err := os.Stat(trashBinary); err != nil {
 		return err
 	}
@@ -187,6 +191,9 @@ func moveToTrashViaBinary(absPath string) error {
 // trash(8). It uses renameatx_np(RENAME_EXCL), so a concurrent name collision
 // can never overwrite an existing Trash item.
 func moveToTrashViaFilesystem(absPath string) error {
+	if err := devcache.CheckPath(absPath); err != nil {
+		return err
+	}
 	trashDir, err := trashDirectoryForPath(absPath)
 	if err != nil {
 		return err
@@ -204,6 +211,9 @@ func moveToTrashViaFilesystem(absPath string) error {
 			name = fmt.Sprintf("%s.%d.%d.%d", base, stamp, os.Getpid(), attempt)
 		}
 		dest := filepath.Join(trashDir, name)
+		if err := devcache.CheckPath(absPath); err != nil {
+			return err
+		}
 		err = unix.RenameatxNp(unix.AT_FDCWD, absPath, unix.AT_FDCWD, dest, unix.RENAME_EXCL)
 		if err == nil {
 			return nil
@@ -285,6 +295,9 @@ func ensureOwnedTrashDirectory(path string, create bool) error {
 
 // moveToTrashViaFinder remains as a last fallback for unusual volume layouts.
 func moveToTrashViaFinder(absPath string) error {
+	if err := devcache.CheckPath(absPath); err != nil {
+		return err
+	}
 	// Escape path for AppleScript (handle quotes and backslashes).
 	escapedPath := strings.ReplaceAll(absPath, "\\", "\\\\")
 	escapedPath = strings.ReplaceAll(escapedPath, "\"", "\\\"")
@@ -315,6 +328,9 @@ func validateTrashTarget(path string) error {
 	}
 	if resolvedPath, err := filepath.EvalSymlinks(path); err == nil && isProtectedAnalyzeDeletePath(resolvedPath) {
 		return fmt.Errorf("protected path cannot be deleted: %s", path)
+	}
+	if err := devcache.CheckPath(path); err != nil {
+		return err
 	}
 	return nil
 }
