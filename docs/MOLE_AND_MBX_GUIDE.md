@@ -93,3 +93,50 @@ mise use --global --tool-option mr_boxington=true rust mr-boxington
   ```bash
   mbx gc
   ```
+
+---
+
+## 3. 本次实战磁盘清理与优化记录（沉淀参考）
+
+在本次优化会话中，系统可用空间从 **~275 GB 提升至 495 GB**，累计安全释放净空间超过 **220 GB**。以下为排查逻辑与具体处置方案：
+
+### 3.1 大模型权重与推理缓存消重（累计释放 ~125 GB）
+
+- **痛点诊断**：
+  1. `~/.cache/huggingface/hub` 中残留大量原版未量化大模型缓存（如 MOSS 语音、Whisper 等），占 51 GB；
+  2. 同一模型在多处重复保存了不同格式：例如 `Qwen3.6-35B` 同时存在于 `gguf-models`（34 GB）和 `~/.omlx/models`（MLX 8-bit 40 GB、MLX 6-bit 27 GB、4-bit 23 GB），单模型占用了 124 GB；
+  3. `~/.omlx/cache` 堆积了 36 GB 的历史推理 KV/Context 临时缓存。
+- **处置方案**：
+  - 清理 HF 原版模型，后续统一只拉取 `mlx-community/*` 量化版；
+  - 确立 **`~/.omlx/models` 为唯一核心模型池**，只保留推理速度与显存最优的 6-bit / 4-bit 黄金版本，清理冗余的 GGUF 8-bit 和 MLX 8-bit；
+  - 外部服务通过软链接复用（如 `~/.mlx-serve/models/shared-models -> ~/.omlx/models`），实现**单份物理空间、双边透明可用**；
+  - 清空 `~/.omlx/cache` 临时推理缓存。
+
+### 3.2 废弃视频流水线与训练残留清理（累计释放 ~58 GB）
+
+- **痛点诊断**：
+  1. `~/vpipe-work` 占 48 GB（含 44 GB 的 `MiniMax-H3-FL2VA-4bit` 视频模型与生成产物）；
+  2. 查阅本地日志发现：在本地生成一段仅 2.3 秒的 544p 低清短视频耗时超 8 分钟，性价比极低，已无实用价值；
+  3. `~/lora-david` 占 10.7 GB，为已经结束的 LoRA 训练历史残留。
+- **处置方案**：
+  - 果断彻底删除 `~/vpipe-work` 与 `~/.mlx-serve/models` 中的同款视频模型副本；
+  - 彻底删除 `~/lora-david`。
+
+### 3.3 代码备份与开发目录瘦身（累计释放 ~15.5 GB）
+
+- **痛点诊断**：
+  1. `~/Dev/backup` 占 21 GB，经扫描发现内部存有近百个 `node_modules` 依赖文件夹；
+  2. `~/Dev/crypto-projects` 中存在两份完全一样的斯坦福小镇 Python 虚拟环境（`environment` 占 2.2 GB），以及闲置插件的前端依赖（1.5 GB）。
+- **优化原则与处置**：
+  - **版本控制备份原则**：只要已 Push 到 GitHub/GitLab 远程，本地备份无需留存完整的 `.git` 历史目录，只保留纯代码树即可；
+  - **依赖免备份原则**：任何备份仓库都不应备份 `node_modules`（可随时 `pnpm install` 恢复）；
+  - 执行递归清除备份中的所有 `node_modules`，`~/Dev/backup` 体积由 21 GB 骤降至 10 GB；
+  - 清理 `crypto-projects` 中的重复 Python 环境与闲置依赖，释放 4.5 GB。
+
+### 3.4 常用构建缓存安全边界
+
+- **Gradle 缓存**：安全清空 `~/.gradle/caches`（释放 2.9 GB），后续构建会自动重新拉取。
+- **Docker / OrbStack 缓存边界**：
+  - **严禁**自动运行 `docker system prune -a --volumes`，因为 `--volumes` 会永久抹除已停止容器的持久化数据库卷（如本地 MySQL/PostgreSQL）；
+  - 工具与日常维护应只针对构建缓存（`docker builder prune`）与悬空镜像。
+
