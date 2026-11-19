@@ -4736,3 +4736,34 @@ EOF
     [ "$status" -eq 0 ] || { echo "$output"; return 1; }
     [[ "$output" == *CONDA_ROOT_GUARD_OK* ]] || return 1
 }
+
+
+@test "clean_dev_mbx runs mbx gc when mbx and cache exist" {
+    mkdir -p "$HOME/Library/Caches/mbx"
+    bin_dir="$HOME/bin"
+    mkdir -p "$bin_dir"
+    cat > "$bin_dir/mbx" << 'EOF'
+#!/bin/bash
+if [[ "$1" == "gc" ]]; then
+    echo "MBX_GC_CALLED"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$bin_dir/mbx"
+
+    run env PATH="$bin_dir:$PATH" HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" /bin/bash --noprofile --norc << 'EOF'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/core/common.sh"
+source "$PROJECT_ROOT/lib/clean/dev.sh"
+clean_tool_cache() {
+    echo "TOOL_CACHE=$1|$2"
+    "${@:3}"
+}
+clean_dev_mbx
+EOF
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"TOOL_CACHE=mbx cache|$HOME/Library/Caches/mbx"* ]]
+    [[ "$output" == *"MBX_GC_CALLED"* ]]
+}

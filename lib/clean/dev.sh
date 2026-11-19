@@ -1320,6 +1320,17 @@ clean_dev_rust() {
         fi
     fi
     safe_clean "${rustup_home}/downloads"/* "Rustup downloads cache"
+    clean_dev_mbx || return $?
+}
+
+# mbx shared Rust build cache (actions and incremental build state).
+clean_dev_mbx() {
+    command -v mbx > /dev/null 2>&1 || return 0
+    local mbx_cache_dir="$HOME/Library/Caches/mbx"
+    [[ -d "$mbx_cache_dir" ]] || return 0
+
+    clean_tool_cache "mbx cache" "$mbx_cache_dir" \
+        run_with_timeout "$MOLE_TIMEOUT_PKG_CLEANUP_SEC" mbx gc || return $?
 }
 # Ruby/gem ecosystem caches (not installed versions).
 clean_dev_ruby() {
